@@ -1,0 +1,206 @@
+---
+title: "Analysis of Tooth Growth Data"
+author: "Sharon Francisco"
+date: "August 10, 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Synopsis
+
+This report analyzes the ToothGrowth data in R's *datasets* library. Six groups of 10 guinea pigs underwent Vitamin C treatment protocols. The length of the guinea pigs' odontoblasts (cells responsible for tooth growth) were recorded. Each subject received one of three doses of Vitamin C (0.5, 1, and 2 mg/day) by one of two delivery methods (orange juice or ascorbic acid).
+
+The null hypotheses being tested are that there is no difference in mean tooth length for the subjects receiving vitamin C by the different delivery methods regardless of dose; receiving different doses; and by delivery method for each dose.
+
+
+## Install Packages and Load Libraries 
+The packages used in the analysis are installed below.
+
+```{r installAndLoadPackage}
+if(!require(datasets, quietly = TRUE)) install.packages("datasets")
+library(datasets)
+if(!require(ggplot2, quietly = TRUE)) install.packages("ggplot2")
+library(ggplot2)
+```
+
+## Exploratory Analysis
+
+The R Documentation for the ToothGrowth data states it is the results of a study of the effect of Vitamin C on Tooth Growth in Guinea Pigs. 
+
+**len** is the length of the odontoblasts (cells responsible for tooth growth) in 60 different guinea pigs. Each animal recieved one of three dose levels (**dose**) of vitamin C (0.5, 1, and 2 mg/day) by one of two delivery methods (**supp**): orange juice (OJ) and ascorbic acid, a form of vitamin C (VC).
+
+I'll get the first 10 rows of the ToothGrowth data, get its structure, and get a summary.
+
+```{r exploreToothGrowthData}
+head(ToothGrowth, 10)
+str(ToothGrowth)
+summary(ToothGrowth)
+
+```
+
+Now I'll make some graphs. I'll look at **dose** and **len**.
+
+```{r initialPlots}
+grph1 <- ggplot(ToothGrowth, aes(dose, len))
+grph1 <- grph1 + geom_boxplot(aes(group = dose, color = dose)) + labs(x = "Dose", y = "Tooth Length")
+grph1
+```
+
+It looks like the higher the dose of vitamin C, the longer the length.
+
+I'll see what effect **supp** has.
+
+```{r plot2}
+grph1 <- grph1 + facet_grid(. ~ supp)
+grph1
+```
+
+For the two lowest doses, 0.5 and 1.0 mg/day, delivery by *OJ* seems to result in longer lengths. For doses of 2.0 mg/day, the differences are less pronounced.
+
+## Hypothesis Testing
+
+Two sets of hypotheses will be tested to determine the statistical significance in the difference of mean tooth lengths for the two different delivery methods (orange juice and ascorbic acid) and each dosage level (0.5, 1, and 2 mg/day). 
+
+### Confidence Intervals
+
+All confidence intervals will be constructed at a 95% confidence level, and all hypotheses will be tested using alpha = 0.05.
+
+### Assumptions
+
+T-tests will be used under the assumption that the guinea pigs were randomly assigned to the doses and delivery methods and are independent and identically distributed (iid). The confidence intervals will be constructed using unpaired intervals. The variances in tooth length are assumed to be unequal for the different groups.
+
+### Delivery Method
+
+The first test will evaluate the difference in mean tooth length for the two delivery methods, regardless of dose.
+
+The Null Hypothesis (H-Null) is that the mean tooth lengths are equal for the delivery methods, orange juice (mu-OJ) and ascorbic acid (mu-VC):
+
+**H-Null: mu-OJ = mu-VC**
+
+The Alternative Hypothesis (H-Alt) is that the mean tooth lengths are not equal for the delivery methods:
+
+**H-Alt: mu-OJ != mu-VC**
+
+Here is the t-test:
+
+```{r testDeliveryHypothesis}
+tstSupp <- t.test(len ~ supp, data = ToothGrowth, 
+                  paired = FALSE,var.equal = FALSE)
+tstSupp
+```
+
+The p-value, `r tstSupp$p.value`, is greater than alpha, 0.05, and the confidence interval, `r tstSupp$conf.int`, contains 0, so we fail to reject the **Null Hypothesis: mu-OJ = mu-VC**.
+
+
+### Doses
+
+The next series of tests will evaluate the differences in mean tooth length for each dose given, 0.5, 1, and 2 mg/day.
+
+The Null Hypotheses will be that the mean tooth lengths are equal for all doses:
+
+1. H-Null-1: mu-half = mu-one
+2. H-Null-2: mu-one = mu-two
+
+The Alternative Hypotheses will be that the mean tooth lengths are unequal for all doses:
+
+1. H-Alt-1: mu-half != mu-one
+2. H-Alt-2: mu-one != mu-two
+
+
+First, I'll subset the data based on dose.
+
+```{r subsetOnDose}
+half <- subset(ToothGrowth, dose == 0.5)
+one <- subset(ToothGrowth, dose == 1)
+two <- subset(ToothGrowth, dose == 2)
+```
+
+Here is the first t-test:
+
+```{r testDose1}
+tstDose1 <- t.test(one$len, half$len, paired = FALSE, 
+                   var.equal = FALSE)
+tstDose1
+```
+
+The p-value is less than alpha, 0.05, and the confidence interval, `r tstDose1$conf.int`, does not contain 0, so we can reject the Null Hypothesis, and accept the **Alternative Hypothesis (H-Alt-1): mu-half != mu-one**.
+
+Here is the second t-test:
+
+```{r testDose2}
+tstDose2 <- t.test(two$len, one$len, paired = FALSE, 
+                   var.equal = FALSE)
+tstDose2
+```
+
+The p-value is less than alpha, 0.05, and the confidence interval, `r tstDose2$conf.int`, does not contain 0, so we can reject the Null Hypothesis, and accept the **Alternative Hypothesis (H-Alt-1): mu-one != mu-two**.
+
+
+### Delivery Method by Dose
+
+The last set of tests will compare the differences in mean tooth lengths for delivery method by dose.
+
+The Null Hypotheses will be that the mean tooth lengths are equal for each dose for both delivery methods:
+
+1. H-Null-1: mu-half-OJ = mu-half-VC
+2. H-Null-2: mu-one-OJ = mu-one-VC
+3. H-Null-3: mu-two-OJ = mu-two-VC
+
+The Alternative Hypotheses will be that the mean tooth lengths are not equal for each dose for the delivery methods:
+
+1. H-Alt-1: mu-half-OJ != mu-half-VC
+2. H-Alt-2: mu-one-OJ != mu-one-VC
+3. H-Alt-2: mu-two-OJ != mu-two-VC
+
+I'll subset the data by dose and delivery method.
+
+```{r subsetByDoseDelivery}
+halfOJ <- subset(ToothGrowth, dose == 0.5 & supp == "OJ")
+halfVC <- subset(ToothGrowth, dose == 0.5 & supp == "VC")
+oneOJ <- subset(ToothGrowth, dose == 1 & supp == "OJ")
+oneVC <- subset(ToothGrowth, dose == 1 & supp == "VC")
+twoOJ <- subset(ToothGrowth, dose == 2 & supp == "OJ")
+twoVC <- subset(ToothGrowth, dose == 2 & supp == "VC")
+```
+
+Here is the first t-test:
+
+```{r testDS1}
+tstDS1 <- t.test(halfOJ$len, halfVC$len, paired = FALSE, 
+                 var.equal = FALSE)
+tstDS1
+```
+
+The p-value, `r tstDS1$p.value`, is less than alpha, 0.05, and the confidence interval, `r tstDS1$conf.int`, does not contain 0, so we can reject the Null Hypothesis, and accept the **Alternative Hypothesis (H-Alt-1): mu-half-OJ != mu-half-VC**.
+
+Here is the second t-test:
+
+```{r testDS2}
+tstDS2 <- t.test(oneOJ$len, oneVC$len, paired = FALSE, 
+                 var.equal = FALSE)
+tstDS2
+```
+
+The p-value, `r tstDS2$p.value`, is less than alpha, 0.05, and the confidence interval, `r tstDS2$conf.int`, does not contain 0, so we can reject the Null Hypothesis, and accept the **Alternative Hypothesis (H-Alt-2): mu-one-OJ != mu-one-VC**.
+
+
+Here is the third t-test:
+
+```{r testDS3}
+tstDS3 <- t.test(twoOJ$len, twoVC$len, paired = FALSE, 
+                 var.equal = FALSE)
+tstDS3
+```
+
+The p-value, `r tstDS3$p.value`, is greater than alpha, 0.05, and the confidence interval, `r tstDS3$conf.int`, contains 0, so we cannot reject the **Null Hypothesis (H-Null-3): mu-two-OJ = mu-two-VC**.
+
+## Summary
+
+Based on the assumptions listed above and the t-tests performed, the delivery method, orange juice or ascorbic acid, does not result in a differences in the mean tooth lengths, regardless of dose (i.e., mu-OJ = mu-VC for all doses). There is also no significant difference in the means of tooth lengths for the guinea pigs receiving 1 or 2 mg/day of Vitamin C by the different delivery methods (i.e., mu-two-OJ = mu-two-VC). For the animals receiving 0.5 or 1 mg/day, delivery by orange juice resulted in a difference in the mean tooth lengths (i.e., mu-one-OJ != mu-one-VC). 
+
+For dose-to-dose comparisons regardless of delivery method (e.g., mu-half = mu-one), the guinea pigs given 1 mg/day had different mean tooth lengths than the ones given 0.5 mg/day (i.e., mu-half != mu-one). The guinea pigs given 1 mg/day and 2 mg/day did not have different mean tooth lengths (i.e., mu-one = mu-two). 
+
+
